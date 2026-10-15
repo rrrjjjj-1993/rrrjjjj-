@@ -1,5 +1,5 @@
 'use client';
-import { assetPath } from '../../lib/asset-path';
+import { assetPath, mediaPath } from '../../lib/asset-path';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import works from '../../lib/works.json';
@@ -10,7 +10,7 @@ function Film({work,index}:{work:Work;index:number}) {
  const timer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const hover=useRef(false),mainPlaying=useRef(false);
  const [seen,setSeen]=useState(false),[motion,setMotion]=useState(false),[playing,setPlaying]=useState(false);
- function stop(){hover.current=false;if(timer.current)clearTimeout(timer.current);preview.current?.pause();setPlaying(false);}
+ function stop(){hover.current=false;if(timer.current)clearTimeout(timer.current);const v=preview.current;if(v){v.pause();v.removeAttribute('src');v.load();}setPlaying(false);}
  useEffect(()=>{
   const media=matchMedia('(prefers-reduced-motion: reduce)');
   const observer=new IntersectionObserver(e=>{if(e.some(x=>x.isIntersecting)){setSeen(true);observer.disconnect();}},{threshold:.08});
@@ -22,12 +22,12 @@ function Film({work,index}:{work:Work;index:number}) {
  function play(){const v=preview.current;if(!v||!hover.current)return;v.currentTime=Math.min(v.duration*.15,15);v.play().then(()=>{if(hover.current)setPlaying(true);else v.pause();}).catch(()=>setPlaying(false));}
  function start(){
   if(mainPlaying.current||!matchMedia('(min-width: 768px) and (hover: hover) and (pointer: fine)').matches||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  hover.current=true;timer.current=setTimeout(()=>{const v=preview.current;if(!v||!hover.current)return;if(!v.getAttribute('src')){v.src=assetPath(work.video);v.load();}else play();},350);
+  hover.current=true;timer.current=setTimeout(()=>{const v=preview.current;if(!v||!hover.current)return;if(!v.getAttribute('src')){v.src=mediaPath(work.video);v.load();}else play();},350);
  }
  return <article ref={card} className={`inline-film motion-film ${motion?'motion-enabled':''} ${seen?'is-visible':''}`} style={{transitionDelay:`${index%2*90}ms`}}>
   <div className="inline-film-heading"><h3>{work.title}</h3><span>{work.category} · {work.duration}</span></div>
   <div className={`film-hover ${playing?'preview-playing':''}`} onPointerEnter={start} onPointerLeave={stop}>
-   <video controls playsInline preload="none" poster={work.coverApproved?assetPath(work.poster):undefined} src={assetPath(work.video)} aria-label={work.title} onPlay={()=>{mainPlaying.current=true;stop();}} onPause={()=>{mainPlaying.current=false;}} onEnded={()=>{mainPlaying.current=false;}}/>
+   <video controls playsInline preload="none" poster={work.coverApproved?assetPath(work.poster):undefined} src={mediaPath(work.video)} aria-label={work.title} onPlay={event=>{mainPlaying.current=true;stop();document.querySelectorAll('video').forEach(v=>{if(v!==event.currentTarget)v.pause();});}} onPause={()=>{mainPlaying.current=false;}} onEnded={()=>{mainPlaying.current=false;}}/>
    <video ref={preview} className="film-hover-preview" muted playsInline preload="none" aria-hidden="true" tabIndex={-1} onLoadedMetadata={play} onError={stop} onTimeUpdate={()=>{const v=preview.current;if(v&&v.currentTime>Math.min(v.duration*.15,15)+6)v.currentTime=Math.min(v.duration*.15,15);}} onEnded={play}/>
    <span className="preview-caption" aria-hidden="true">无声预览</span>
   </div>
